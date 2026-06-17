@@ -9,6 +9,12 @@
 이사·출산·퇴사 같은 **생활 이벤트**를 말하면, AI가 흩어진 행정 절차를 대신 모아
 **“언제까지 · 어디서 · 무엇을”** 해야 하는지 태스크 보드로 정리해 주는 모바일 웹앱.
 
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Solar Pro2](https://img.shields.io/badge/Upstage-Solar%20Pro2-FF7A00?style=flat-square)
+
 [기능](#-주요-기능) · [예시 시나리오](#-예시-시나리오) · [실행 방법](#-실행-방법)
 
 </div>
