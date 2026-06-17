@@ -1,0 +1,93 @@
+{
+  "event": "birth",
+  "title": "출산",
+  "emoji": "👶",
+  "intro": "출산을 축하드려요! 먼저 모든 혜택의 선행 절차인 출생신고부터 안내해 드릴게요.",
+  "_note": "seed content. 복지 혜택(첫만남이용권·부모급여·지자체 출산지원금 등)은 복지로/보조금24 API(DATA_GO_KR_KEY 필요)로 grounding 예정이라 아직 미노출. SEED_LEGAL에 등록된 절차만 노출됨.",
+  "procedures": [
+    {
+      "id": "birth-report",
+      "name": "출생신고",
+      "priority": "must",
+      "deadline": "출생 후 1개월 이내",
+      "deadlineDays": 30,
+      "agency": "주민센터 / 정부24 (온라인 출생신고)",
+      "online": true,
+      "documents": ["출생증명서(병원 발급)", "신고인 신분증", "(온라인 시) 병원 연계 출생정보"],
+      "link": "https://www.gov.kr/main?a=AA020InfoCappViewApp&CappBizCD=13100000035",
+      "source": { "name": "정부24", "tier": "reference", "checkedAt": "" },
+      "condition": "모든 출생 공통. 다른 모든 혜택의 선행 절차.",
+      "summary": "출생 후 기한 내 신고해야 합니다. 일부 병원은 온라인 출생신고 연계가 가능해 방문 없이 처리할 수 있어요. 출생신고가 완료되어야 각종 지원금을 신청할 수 있습니다."
+    },
+    {
+      "id": "first-meet",
+      "name": "첫만남이용권",
+      "priority": "must",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "출생신고된 출생아.",
+      "summary": ""
+    },
+    {
+      "id": "child-allowance",
+      "name": "아동수당",
+      "priority": "must",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "만 8세 미만 아동.",
+      "summary": ""
+    },
+    {
+      "id": "parent-allowance",
+      "name": "부모급여",
+      "priority": "must",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "0~23개월 영아.",
+      "summary": ""
+    },
+    {
+      "id": "child-care-allowance",
+      "name": "양육수당",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "어린이집·유치원 미이용(가정양육) 영유아.",
+      "summary": ""
+    },
+    {
+      "id": "seoul-maternity-transport",
+      "name": "임산부 교통비 지원",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "거주 지자체의 임산부 교통비 지원(해당 지역).",
+      "summary": ""
+    }
+  ]
+}

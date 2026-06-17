@@ -1,0 +1,18 @@
+# secrets
+backend/.env
+api/
+
+backend/sources/learned_common.json
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# node
+node_modules/
+frontend/dist/
+
+# os
+.DS_Store

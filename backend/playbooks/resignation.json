@@ -1,0 +1,93 @@
+{
+  "event": "resignation",
+  "title": "퇴사",
+  "emoji": "💼",
+  "intro": "권고사직은 실업급여 수급에 유리한 사유예요. 빠뜨리면 손해 보는 절차를 챙겨 드릴게요.",
+  "_note": "seed content. 이직확인서·구직등록·건강보험 전환 등은 고용24/공단 소스로 grounding 예정이라 아직 미노출. SEED_LEGAL에 등록된 절차만 노출됨.",
+  "procedures": [
+    {
+      "id": "unemployment-benefit",
+      "name": "실업급여(구직급여) 신청",
+      "priority": "must",
+      "deadline": "퇴사 다음날부터 12개월 이내",
+      "deadlineDays": 365,
+      "agency": "거주지 관할 고용센터 + 고용보험 온라인 교육",
+      "online": true,
+      "documents": ["이직확인서(권고사직)", "워크넷 구직등록 완료", "신분증"],
+      "link": "https://www.ei.go.kr",
+      "source": { "name": "고용보험", "tier": "reference", "checkedAt": "" },
+      "condition": "고용보험 가입기간(180일 이상) 충족 + 비자발적 이직(권고사직 해당).",
+      "summary": "권고사직은 비자발적 이직이라 수급 대상입니다. 온라인 수급자격 교육 → 고용센터 방문 신청 → 인정일마다 실업인정 절차를 거칩니다. 수급기간이 지나면 못 받으니 퇴사 후 바로 시작하세요."
+    },
+    {
+      "id": "severance-pay",
+      "name": "퇴직금 수령 확인",
+      "priority": "must",
+      "deadline": "퇴직 후 기한 내 지급",
+      "deadlineDays": 14,
+      "agency": "회사(사업주)",
+      "online": false,
+      "documents": ["근로계약서", "급여명세"],
+      "link": "",
+      "source": { "name": "근로자퇴직급여 보장법", "tier": "reference", "checkedAt": "" },
+      "condition": "1년 이상 근속한 경우.",
+      "summary": "퇴직금은 원칙적으로 퇴직 후 법정 기한 내 지급되어야 합니다. 미지급 시 고용노동부에 진정을 넣을 수 있어요. 지급액·지급일을 확인하세요."
+    },
+    {
+      "id": "tomorrow-learning-card",
+      "name": "국민내일배움카드",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "재취업·직무전환 훈련을 원하는 경우.",
+      "summary": ""
+    },
+    {
+      "id": "early-reemployment",
+      "name": "조기재취업수당",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": false,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "실업급여 수급 중 조기 재취업한 경우.",
+      "summary": ""
+    },
+    {
+      "id": "health-insurance-change",
+      "name": "건강보험 자격·주소 변경",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "직장가입자 → 지역가입자 전환(공통).",
+      "summary": ""
+    },
+    {
+      "id": "pension-change",
+      "name": "국민연금 자격·소득 변경 신고",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "퇴사로 소득·자격이 바뀐 경우(공통).",
+      "summary": ""
+    }
+  ]
+}

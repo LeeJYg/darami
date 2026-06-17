@@ -1,0 +1,65 @@
+{
+  "event": "move",
+  "title": "이사",
+  "emoji": "📦",
+  "intro": "이사 한 번에 전입신고부터 자녀 전학까지 여러 절차가 얽혀 있어요. 상황을 알려주시면 필요한 것만 골라 드릴게요.",
+  "_note": "seed content (절차 목록/조건/서류). deadline·기관·출처·법적근거는 큐레이션 agent가 법령 API로 grounding한다. SEED_LEGAL에 등록된 절차만 화면에 노출됨.",
+  "procedures": [
+    {
+      "id": "transfer-report",
+      "name": "전입신고",
+      "priority": "must",
+      "deadline": "전입 후 14일 이내",
+      "deadlineDays": 14,
+      "agency": "새 주소지 관할 주민센터 / 정부24",
+      "online": true,
+      "documents": ["신청인 신분증", "(대리신고 시) 위임장·대리인 신분증"],
+      "link": "https://www.gov.kr/main?a=AA020InfoCappViewApp&CappBizCD=13100000016",
+      "source": { "name": "정부24", "tier": "reference", "checkedAt": "" },
+      "condition": "모든 이사 공통.",
+      "summary": "새 거주지 관할 주민센터에 전입을 신고합니다. 정부24에서 공동인증서로 온라인 신고가 가능해 평일 방문이 어려워도 처리할 수 있어요."
+    },
+    {
+      "id": "school-transfer",
+      "name": "초등학교 전학",
+      "priority": "must",
+      "deadline": "전입신고와 연계 (이사 직후)",
+      "deadlineDays": 14,
+      "agency": "전입 학교 / 교육지원청",
+      "online": true,
+      "documents": ["전입신고 시 취학아동 전입 동시 처리", "(필요 시) 재학증명서"],
+      "link": "https://www.gov.kr",
+      "source": { "name": "교육지원청", "tier": "reference", "checkedAt": "" },
+      "condition": "초·중학교 재학 자녀가 있는 경우.",
+      "summary": "전입신고 시 '취학아동 전입'을 함께 신청하면 새 주소지 배정 학교로 전학 통지가 갑니다. 새 학교에 등교일·필요서류를 확인하세요."
+    },
+    {
+      "id": "car-address",
+      "name": "자동차 주소지 변경",
+      "priority": "must",
+      "deadline": "변경 사유 발생 후 기한 내",
+      "deadlineDays": 15,
+      "agency": "정부24 / 차량등록사업소",
+      "online": true,
+      "documents": ["자동차등록증", "신분증"],
+      "link": "https://www.gov.kr",
+      "source": { "name": "정부24", "tier": "reference", "checkedAt": "" },
+      "condition": "차량을 보유한 경우.",
+      "summary": "전입(주소 변경)에 따라 자동차 변경등록이 필요합니다. 전입신고 시 동시 신청하면 한 번에 처리됩니다."
+    },
+    {
+      "id": "health-insurance-change",
+      "name": "건강보험 자격·주소 변경",
+      "priority": "nice",
+      "deadline": "",
+      "deadlineDays": 9999,
+      "agency": "",
+      "online": true,
+      "documents": [],
+      "link": "",
+      "source": { "name": "", "tier": "reference", "checkedAt": "" },
+      "condition": "거주지 변경에 따른 건강보험 주소·자격 반영(공통).",
+      "summary": ""
+    }
+  ]
+}
