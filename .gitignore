@@ -1,6 +1,5 @@
 # secrets
 backend/.env
-api/
 
 backend/sources/learned_common.json
 
