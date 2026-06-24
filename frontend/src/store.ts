@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   DynamicEntry,
   EventKey,
+  LlmProvider,
   Playbook,
   Procedure,
   StoredSession,
@@ -18,8 +19,16 @@ import {
   updatePersona,
 } from "./api/chat";
 import { SCENARIO_MAP } from "./data/scenarios";
+import { DEFAULT_LLM } from "./data/llm";
 
 type Tab = "chat" | "board";
+
+const LLM_KEY = "darami.llm"; // 선택한 응답 LLM(provider) 영속
+
+function loadLlm(): LlmProvider {
+  const v = localStorage.getItem(LLM_KEY);
+  return v === "solar" || v === "kexaone" ? v : DEFAULT_LLM;
+}
 
 const DYN_KEY = "darami.dynamicEvents.v2"; // v2: 동적 grounding 전환으로 옛 미검증 캐시 무효화
 const SESS_KEY = "darami.sessions.v2"; // v2: 큐레이션 grounding 전환으로 옛 보드 캐시 무효화
@@ -87,6 +96,7 @@ interface State {
   quickReplies: string[];
   error: string | null;
   persona: UserPersona | null;
+  conflictPending: boolean;
   appliedRegion: string | null; // 플레이북에 반영된 거주 지역(시도)
 
   board: BoardItem[];
@@ -103,7 +113,11 @@ interface State {
   // 이벤트별 대화 세션 (영속)
   sessions: Record<string, StoredSession>;
 
+  // 응답 LLM (영속) — "solar"(Solar Pro) | "kexaone"(K-EXAONE)
+  llm: LlmProvider;
+
   // actions
+  setLlm: (key: LlmProvider) => void;
   startScenario: (key: EventKey) => Promise<void>;
   enterEvent: (event: EventKey, playbook: Playbook, opener: string) => Promise<void>;
   generateAndStart: (description: string) => Promise<void>;
@@ -169,6 +183,7 @@ export const useStore = create<State>((set, get) => ({
   quickReplies: [],
   error: null,
   persona: null,
+  conflictPending: false,
   appliedRegion: null,
   board: [],
   userTodos: [],
@@ -179,6 +194,16 @@ export const useStore = create<State>((set, get) => ({
   generating: false,
   genError: null,
   sessions: loadSessions(),
+  llm: loadLlm(),
+
+  setLlm: (key) => {
+    try {
+      localStorage.setItem(LLM_KEY, key);
+    } catch {
+      /* ignore */
+    }
+    set({ llm: key });
+  },
 
   // 현재 이벤트의 대화 상태를 세션에 저장
   persistCurrent: () => {
@@ -224,6 +249,7 @@ export const useStore = create<State>((set, get) => ({
         board: sess.board,
         quickReplies: sess.quickReplies,
         persona: sess.persona ?? { event, facts: {} },
+        conflictPending: false,
         userTodos: sess.userTodos ?? [],
         openTodoId: null,
         appliedRegion: null,
@@ -243,6 +269,7 @@ export const useStore = create<State>((set, get) => ({
       board: [],
       quickReplies: [],
       persona: { event, facts: {} },
+      conflictPending: false,
       userTodos: [],
       openTodoId: null,
       appliedRegion: null,
@@ -270,6 +297,7 @@ export const useStore = create<State>((set, get) => ({
       patch.openTodoId = null;
       patch.quickReplies = [];
       patch.persona = { event: key, facts: {} };
+      patch.conflictPending = false;
     }
     set(patch);
   },
@@ -280,7 +308,7 @@ export const useStore = create<State>((set, get) => ({
     if (!desc || get().generating) return;
     set({ generating: true, genError: null });
     try {
-      const playbook = await generatePlaybook(desc, get().persona);
+      const playbook = await generatePlaybook(desc, get().persona, get().llm);
       if (!playbook.procedures || playbook.procedures.length === 0) {
         set({
           generating: false,
@@ -344,9 +372,15 @@ export const useStore = create<State>((set, get) => ({
     // ① 페르소나 갱신 + 충돌 검사 (1차 호출)
     let personaFacts = get().persona?.facts ?? {};
     try {
-      const pr = await updatePersona(get().persona, history);
-      if (pr.conflict && pr.conflict.question) {
-        // 모순 발견 → 확인 질문만 띄우고 대화 생성은 건너뜀 (페르소나 미반영)
+      const pr = await updatePersona(get().persona, history, get().llm);
+      // 비충돌 facts는 conflict 여부와 무관하게 항상 커밋한다.
+      // (conflict일 때 facts를 통째로 버리면 확정값이 영영 저장되지 않아 같은 질문이 무한 반복됨)
+      if (pr.facts) personaFacts = pr.facts;
+
+      // conflict는 '한 턴'만 대화를 막을 수 있다. 직전 턴에 이미 같은 확인을 띄웠다면(conflictPending)
+      // 사용자의 답을 확정으로 보고 그대로 진행한다 → 모델이 무엇을 하든 무한 루프 차단(결정론적 안전장치).
+      if (pr.conflict && pr.conflict.question && !get().conflictPending) {
+        const pendingPersona: UserPersona = { event: get().event ?? undefined, facts: personaFacts };
         set((s) => {
           const msgs = [...s.messages];
           const last = msgs[msgs.length - 1];
@@ -355,17 +389,19 @@ export const useStore = create<State>((set, get) => ({
             messages: msgs,
             quickReplies: pr.conflict!.options ?? [],
             streaming: false,
+            persona: pendingPersona, // 비충돌 facts는 저장(disputed key만 다음 답으로 확정)
+            conflictPending: true,
           };
         });
         get().persistCurrent();
         return;
       }
-      personaFacts = pr.facts ?? personaFacts;
     } catch {
       // 페르소나 호출 실패 시 기존 페르소나로 계속 진행
     }
+    // 진행(충돌 해소 또는 없음) → pending 해제하고 갱신된 페르소나 반영
     const nextPersona: UserPersona = { event: get().event ?? undefined, facts: personaFacts };
-    set({ persona: nextPersona });
+    set({ persona: nextPersona, conflictPending: false });
 
     // 거주지가 파악되면 지자체/광역 혜택까지 포함해 플레이북을 재큐레이션(on-demand)
     const region = deriveRegion(personaFacts);
@@ -434,9 +470,10 @@ export const useStore = create<State>((set, get) => ({
           return { streaming: false, error: message, messages: msgs };
         }),
     },
-    // 현재 플레이북 + 페르소나를 함께 보낸다
+    // 현재 플레이북 + 페르소나 + 선택한 LLM을 함께 보낸다
     get().playbook,
-    nextPersona);
+    nextPersona,
+    get().llm);
   },
 
   setTab: (t) => set({ tab: t }),
@@ -495,6 +532,7 @@ export const useStore = create<State>((set, get) => ({
       openTodoId: null,
       quickReplies: [],
       persona: null,
+      conflictPending: false,
       appliedRegion: null,
       error: null,
       tab: "chat",

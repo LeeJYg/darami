@@ -3,6 +3,8 @@ import { SCENARIOS } from "../data/scenarios";
 import { useStore } from "../store";
 import type { EventKey } from "../types";
 import mainLogo from "../../figure/darami-main-logo.png";
+import LlmToggle from "./LlmToggle";
+import { llmNote } from "../data/llm";
 
 export default function ScenarioPicker() {
   const {
@@ -15,6 +17,7 @@ export default function ScenarioPicker() {
     genError,
     sessions,
     clearSession,
+    llm,
   } = useStore();
 
   const hasSession = (key: string) =>
@@ -50,6 +53,17 @@ export default function ScenarioPicker() {
         <p className="text-xs text-acorn/50 mt-3 leading-relaxed">
           여러 창구를 헤매지 않아도,<br />한 번의 대화로 모든 절차를.
         </p>
+        <div className="mt-4 flex flex-col items-center gap-1.5">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[10px] text-acorn/45">응답 AI</span>
+            <LlmToggle />
+          </div>
+          {llmNote(llm) && (
+            <p className="text-[10px] text-acorn/55 text-center leading-tight">
+              ⚠️ {llmNote(llm)}
+            </p>
+          )}
+        </div>
       </div>
 
       <p className="text-xs font-semibold text-acorn/60 mb-3 px-1">어떤 생활 이벤트를 도와드릴까요?</p>

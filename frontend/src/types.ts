@@ -1,5 +1,8 @@
 /** 정적 시나리오 3종 + 동적 생성 이벤트(임의 슬러그)를 모두 허용 */
 export type EventKey = "move" | "birth" | "resignation" | (string & {});
+
+/** 응답에 사용할 LLM 제공자. 공식 표기: Solar Pro(Upstage) / K-EXAONE(LG) */
+export type LlmProvider = "solar" | "kexaone";
 export type Priority = "must" | "nice" | "qna";
 export type Status = "waiting" | "in_progress" | "done";
 
