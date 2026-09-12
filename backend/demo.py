@@ -12,7 +12,9 @@ import json
 import os
 from pathlib import Path
 
-SCRIPT_PATH = Path(__file__).parent / "demo_script.json"
+# 기본은 제품 대본. 평가 하네스는 DARAMI_DEMO_SCRIPT 로 다른 대본을 물려
+# 제품 대본을 건드리지 않고 같은 라우트를 재생할 수 있다(work/eval/live_replay_all_events.py).
+SCRIPT_PATH = Path(os.environ.get("DARAMI_DEMO_SCRIPT") or (Path(__file__).parent / "demo_script.json"))
 
 
 def enabled() -> bool:

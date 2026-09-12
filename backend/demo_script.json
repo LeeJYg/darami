@@ -187,6 +187,61 @@
             "status": "waiting"
           }
         ]
+      },
+      {
+        "reply": "부모급여는 출생 후 0~23개월 기간 내 신청 가능합니다. 다만 출생신고가 선행되어야 하므로, 먼저 출생신고를 완료해 주세요. 현재 진행 중인 출생신고가 끝나면 필요한 절차를 '할 일'에 추가해 드리겠습니다.",
+        "facts": {},
+        "quickReplies": [],
+        "eventDetected": "birth",
+        "boardOps": [],
+        "_source": "2026-09-12 21:17 Solar Pro(solar-pro2-251215) 실측 응답 원문 — live_contract_probe birth#5 rep0. 손으로 만든 문장이 아니다. 가드 통과 여부를 종단으로 재기 위한 대본이다."
+      }
+    ]
+  },
+  "resignation": {
+    "turns": [
+      {
+        "reply": "퇴사 준비 도와드릴게요. 권고사직인지 자발적 이직인지만 확인하면 필요한 절차를 담아드릴게요.",
+        "facts": {
+          "퇴사일": "2026-09-30"
+        },
+        "quickReplies": [
+          "권고사직",
+          "자발적 이직"
+        ],
+        "askMissing": [
+          "이직 사유"
+        ],
+        "eventDetected": "resignation",
+        "boardOps": []
+      },
+      {
+        "reply": "필요한 절차 2가지를 '할 일'에 담아뒀어요. 실업급여(구직급여) 신청, 퇴직금 수령 확인이에요.",
+        "facts": {
+          "이직 사유": "권고사직"
+        },
+        "quickReplies": [],
+        "eventDetected": "resignation",
+        "boardOps": [
+          {
+            "op": "add",
+            "id": "unemployment-benefit",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "severance-pay",
+            "status": "waiting"
+          }
+        ]
+      },
+      {
+        "reply": "실업급여(구직급여)는 퇴사 다음날부터 12개월 이내에 신청하셔야 해요. 거주지 관할 고용센터에서 신청하고, 온라인 수급자격 교육을 먼저 들으시면 됩니다. 퇴직금은 퇴직 후 법정 기한 내 지급되어야 하고, 미지급 시 고용노동부에 진정을 넣을 수 있어요. 구체적인 지급액과 근거 조문은 고용센터에서 확인해 주세요.",
+        "facts": {},
+        "quickReplies": [],
+        "eventDetected": "resignation",
+        "boardOps": [],
+        "_source": "부스 대본용 — 플레이북 resignation.json 의 deadline·agency·summary 로만 구성한 문장이다. 2026-09-12 실측 응답(live_contract_probe resignation#7)은 「고용보험법」 제40조·제43조 같은 조문과 수급일수를 지어냈고, guard.py 는 금액·연락처만 막아 이 부류를 걸러내지 못한다(eval/out/live_replay_all_events.json 의 article_after=3, deadline_after=3). 그래서 실측 응답은 부스 대본에 싣지 않고, 재생 측정은 eval/live_replay_all_events.py 의 별도 fixture 에서만 한다."
       }
     ]
   }

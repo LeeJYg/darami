@@ -16,6 +16,31 @@ PHONE_RE = re.compile(
     r"(?<!\d)(?:0\d{1,2}[-\s.)]?\s?\d{3,4}[-\s.]?\d{4}|1\d{3}[-\s.]?\d{4})(?!\d)"
 )
 
+# 국번 없는 3~4자리 공공 상담번호("1350" 등)는 위 PHONE_RE 에 걸리지 않는다(eval/verify_short_phone.py).
+# 부스에서는 틀린 단축번호도 틀린 대표번호와 똑같은 사고라서 막되,
+# "120일"·"365일" 같은 수량 표현을 지우지 않도록 (a) 실재하는 공공번호 목록과
+# (b) 연락처 문맥어가 앞에 붙은 3~4자리, 두 조건으로만 잡는다.
+SHORT_CODES = (
+    "1301", "1330", "1332", "1339", "1345", "1350", "1355", "1357", "1359",
+    "1366", "1372", "1382", "1385", "1388", "1391", "1393", "1399",
+    "110", "111", "112", "113", "117", "118", "119", "120", "125", "128", "129", "132",
+)
+# 단축번호 뒤에 오면 '번호'가 아니라 수량인 단위들.
+_UNIT = r"(?:개월|일간|일차|퍼센트|가지|시간|번째|일|년|월|주|분|초|원|명|개|건|호|세|차|%|만|천|억)"
+SHORT_PHONE_RE = re.compile(
+    r"(?<![\d\-.~∼〜–—])(?:" + "|".join(SHORT_CODES) + r")(?![\d\-])(?!\.\d)(?![~∼〜–—])(?!\s*" + _UNIT + r")"
+)
+CONTEXT_SHORT_RE = re.compile(
+    r"(?:전화|번호|연락처|문의|상담|콜센터|국번\s*없이|☎)[^\d\n]{0,10}"
+    r"(?<![\d\-.~∼〜–—])(\d{3,4})(?![\d\-])(?!\.\d)(?![~∼〜–—])(?!\s*" + _UNIT + r")"
+)
+
+# kind -> 검사할 정규식들. phone 은 대표번호·단축번호·문맥 규칙을 모두 본다.
+_KIND_PATS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "money": (MONEY_RE,),
+    "phone": (PHONE_RE, SHORT_PHONE_RE, CONTEXT_SHORT_RE),
+}
+
 # 문장 분리(한국어 종결 + 줄바꿈). 구분자를 남겨 다시 이어붙일 수 있게 한다.
 _SENT_SPLIT = re.compile(r"(?<=[.!?？！。])\s+|\n+")
 
@@ -31,8 +56,12 @@ def find_ungrounded(text: str, grounded: str) -> dict[str, list[str]]:
     """text 안에서 grounded(플레이북 등)에 없는 금액·전화번호를 찾는다."""
     g = _norm(grounded or "")
     hits: dict[str, list[str]] = {}
-    for kind, pat in (("money", MONEY_RE), ("phone", PHONE_RE)):
-        found = [m for m in pat.findall(text or "") if _norm(m) not in g]
+    for kind, pats in _KIND_PATS.items():
+        found: list[str] = []
+        for pat in pats:
+            for m in pat.findall(text or ""):
+                if _norm(m) not in g and m not in found:
+                    found.append(m)
         if found:
             hits[kind] = found
     return hits
