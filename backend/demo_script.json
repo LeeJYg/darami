@@ -1,0 +1,193 @@
+{
+  "move": {
+    "turns": [
+      {
+        "reply": "이사 준비 도와드릴게요. 몇 가지만 확인하면 필요한 절차를 골라 담아드릴 수 있어요.",
+        "facts": {
+          "이사일": "2026-09-26",
+          "지역": "경주"
+        },
+        "quickReplies": [
+          "초·중학생 자녀 있음",
+          "차량 보유",
+          "평일 낮 방문 어려움"
+        ],
+        "askMissing": [
+          "자녀 학령",
+          "차량 보유 여부"
+        ],
+        "eventDetected": "move",
+        "boardOps": []
+      },
+      {
+        "reply": "필요한 절차 4가지를 '할 일'에 담아뒀어요. 전입신고, 초등학교 전학, 자동차 주소지 변경, 건강보험 자격·주소 변경이에요. 전입신고와 전학은 기한이 짧으니 먼저 처리하시는 게 좋아요.",
+        "facts": {
+          "초등학생 자녀": true,
+          "차량 보유": true
+        },
+        "quickReplies": [],
+        "eventDetected": "move",
+        "boardOps": [
+          {
+            "op": "add",
+            "id": "transfer-report",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "school-transfer",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "car-address",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "health-insurance-change",
+            "status": "waiting"
+          }
+        ]
+      },
+      {
+        "reply": "전입신고를 14일 이내에 하지 않으면 3만 원의 과태료가 부과될 수 있어요. 양천구청 주민센터 전화번호는 02-2620-3000입니다. 전입신고는 정부24에서 온라인으로 처리 가능하니 평일 방문이 어렵다면 온라인으로 신청해 보세요.",
+        "facts": {},
+        "quickReplies": [],
+        "eventDetected": "move",
+        "boardOps": [],
+        "_note": "부스 6단계 재현용 — 실제 Solar Pro 응답(금액·전화번호 유출)을 그대로 둔다. guard.sanitize_reply 가 걸러내는지 종단으로 확인하기 위한 대본이다."
+      }
+    ]
+  },
+  "birth-move": {
+    "turns": [
+      {
+        "reply": "출산과 이사가 겹치셨군요. 두 가지를 한 보드에 모아 정리해 드릴게요. 먼저 몇 가지만 확인할게요.",
+        "facts": {
+          "출생일": "2026-08-22",
+          "이사일": "2026-09-26",
+          "지역": "서울 양천구"
+        },
+        "askMissing": [
+          "첫 아이 여부",
+          "차량 보유 여부"
+        ],
+        "quickReplies": [
+          "첫 아이입니다",
+          "차량 보유",
+          "평일 낮 방문 어려움"
+        ],
+        "eventDetected": "birth-move",
+        "boardOps": []
+      },
+      {
+        "reply": "출산과 이사 절차를 한 보드에 모아 7가지를 '할 일'에 담아뒀어요. 전입신고, 출생신고, 자동차 주소지 변경, 첫만남이용권, 아동수당, 부모급여, 건강보험 자격·주소 변경이에요. 기한이 짧은 전입신고와 출생신고부터 확인해 주세요.",
+        "facts": {
+          "첫 아이": true,
+          "차량 보유": true
+        },
+        "quickReplies": [
+          "전입신고 끝냈어요",
+          "출생신고 방법 알려주세요"
+        ],
+        "eventDetected": "birth-move",
+        "boardOps": [
+          {
+            "op": "add",
+            "id": "transfer-report",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "birth-report",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "car-address",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "first-meet",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "child-allowance",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "parent-allowance",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "health-insurance-change",
+            "status": "waiting"
+          }
+        ]
+      },
+      {
+        "reply": "전입신고를 완료로 바꿔뒀어요. 출생신고는 정부24에서 온라인으로도 가능하고, 첫만남이용권은 출생신고 뒤에 신청하면 한 번에 이어져요.",
+        "facts": {},
+        "quickReplies": [],
+        "eventDetected": "birth-move",
+        "boardOps": [
+          {
+            "op": "update",
+            "id": "transfer-report",
+            "status": "done"
+          }
+        ]
+      }
+    ]
+  },
+  "birth": {
+    "turns": [
+      {
+        "reply": "출산 축하드려요. 출생신고부터 지원금까지 한 번에 정리해 드릴게요.",
+        "facts": {
+          "출생일": "2026-09-07"
+        },
+        "quickReplies": [
+          "첫 아이입니다",
+          "서울 거주"
+        ],
+        "eventDetected": "birth",
+        "boardOps": []
+      },
+      {
+        "reply": "필요한 절차 4가지를 '할 일'에 담아뒀어요. 출생신고, 첫만남이용권, 아동수당, 부모급여예요.",
+        "facts": {
+          "첫 아이": true
+        },
+        "eventDetected": "birth",
+        "boardOps": [
+          {
+            "op": "add",
+            "id": "birth-report",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "first-meet",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "child-allowance",
+            "status": "waiting"
+          },
+          {
+            "op": "add",
+            "id": "parent-allowance",
+            "status": "waiting"
+          }
+        ]
+      }
+    ]
+  }
+}

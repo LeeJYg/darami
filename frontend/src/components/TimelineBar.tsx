@@ -68,12 +68,18 @@ export default function TimelineBar() {
 
       {/* 탭 */}
       <div className="flex px-4 gap-1">
-        <TabButton active={tab === "chat"} onClick={() => setTab("chat")} label="대화" />
+        <TabButton
+          active={tab === "chat"}
+          onClick={() => setTab("chat")}
+          label="대화"
+          testId="tab-chat"
+        />
         <TabButton
           active={tab === "board"}
           onClick={() => setTab("board")}
           label="할 일"
           badge={activeCount}
+          testId="tab-board"
         />
       </div>
     </div>
@@ -85,14 +91,17 @@ function TabButton({
   onClick,
   label,
   badge,
+  testId,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   badge?: number;
+  testId?: string;
 }) {
   return (
     <button
+      data-testid={testId}
       onClick={onClick}
       className={`relative px-4 py-2 text-sm font-semibold rounded-t-lg transition ${
         active ? "text-nut" : "text-acorn/45"

@@ -25,6 +25,9 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 
+import demo
+from compose import COMPOSITES, merge_playbooks
+from guard import sanitize_reply
 from prompts import build_system_prompt, build_generation_prompt, build_persona_prompt
 from sources.curate import curate_event, legal_for, curate_dynamic
 
@@ -125,10 +128,14 @@ class PersonaReq(BaseModel):
 def load_playbook(event: str | None) -> dict:
     if not event:
         return {"event": None, "title": "", "procedures": []}
+    # 복합 이벤트("출산 후 이사" 등)는 재료 이벤트를 각각 불러 한 보드로 합친다.
+    if event in COMPOSITES:
+        parts = [load_playbook(e) for e in COMPOSITES[event]["events"]]
+        return merge_playbooks(event, parts)
     # on-demand 큐레이션(법령 grounding + 캐시). 실패 시 정적 JSON으로 fallback.
     try:
         curated = curate_event(event)
-        if curated:
+        if curated and curated.get("procedures"):
             return curated
     except Exception:  # noqa: BLE001
         pass
@@ -142,6 +149,7 @@ def load_playbook(event: str | None) -> dict:
 def health():
     return {
         "ok": True,
+        "demoMode": demo.enabled(),
         "defaultProvider": DEFAULT_PROVIDER,
         "providers": {k: p.available for k, p in PROVIDERS.items()},
     }
@@ -152,11 +160,27 @@ def providers():
     """프론트 LLM 토글용 — 선택 가능한 모델과 가용성."""
     return {
         "default": DEFAULT_PROVIDER,
+        "demoMode": demo.enabled(),
         "providers": [
             {"key": p.key, "label": p.label, "available": p.available}
             for p in PROVIDERS.values()
         ],
     }
+
+
+@app.get("/api/playbook/compose/{slug}")
+def get_composed_playbook(slug: str, region: Optional[str] = None):
+    """복합 생활 이벤트 → 하나의 보드용 플레이북. 지원하지 않는 slug 면 404."""
+    if slug not in COMPOSITES:
+        return JSONResponse({"error": f"지원하지 않는 복합 이벤트: {slug}"}, status_code=404)
+    parts = []
+    for ev in COMPOSITES[slug]["events"]:
+        try:
+            curated = curate_event(ev, region=region)
+            parts.append(curated if (curated and curated.get("procedures")) else load_playbook(ev))
+        except Exception:  # noqa: BLE001
+            parts.append(load_playbook(ev))
+    return JSONResponse(merge_playbooks(slug, parts))
 
 
 @app.get("/api/playbook/{event}")
@@ -165,7 +189,7 @@ def get_playbook(event: str, region: Optional[str] = None):
     region: 사용자 거주지(시도). 지자체/광역 혜택 grounding에 사용."""
     try:
         curated = curate_event(event, region=region)
-        if curated:
+        if curated and curated.get("procedures"):
             return JSONResponse(curated)
     except Exception:  # noqa: BLE001
         pass
@@ -206,12 +230,28 @@ def _create_json(provider: Provider, chat_messages: list[dict], temperature: flo
     return completion.choices[0].message.content or "{}"
 
 
-def call_chat(provider: Provider, system_prompt: str, messages: list[Message]) -> dict:
-    """선택된 LLM을 호출해 대화용 구조화 JSON 응답을 받는다."""
+def call_chat(
+    provider: Provider,
+    system_prompt: str,
+    messages: list[Message],
+    grounded: str | None = None,
+) -> dict:
+    """선택된 LLM을 호출해 대화용 구조화 JSON 응답을 받는다.
+
+    grounded: 금액·연락처의 근거로 인정할 텍스트(플레이북 JSON). 비우면 아무 금액도 근거 없음으로 본다.
+    근거에 없는 금액·전화번호는 여기서 코드로 제거한다(프롬프트 규칙만으로는 못 막는다).
+    """
     chat_messages = [{"role": "system", "content": system_prompt}]
     chat_messages += [{"role": m.role, "content": m.content} for m in messages]
     raw = _create_json(provider, chat_messages, temperature=0.3)
-    return _parse_json(raw, {"reply": raw, "eventDetected": None, "askMissing": [], "quickReplies": [], "boardOps": []})
+    result = _parse_json(
+        raw, {"reply": raw, "eventDetected": None, "askMissing": [], "quickReplies": [], "boardOps": []}
+    )
+    clean, removed = sanitize_reply(str(result.get("reply", "")), grounded or "")
+    result["reply"] = clean
+    if removed:
+        result["ungroundedRemoved"] = removed
+    return result
 
 
 def make_json_caller(provider: Provider):
@@ -251,6 +291,9 @@ def generate(req: GenReq):
 @app.post("/api/persona")
 def persona(req: PersonaReq):
     """대화 입력으로 사용자 페르소나를 갱신하고 충돌을 검사한다(턴당 1차 호출)."""
+    prior = (req.persona or {}).get("facts") or {}
+    if demo.enabled():
+        return JSONResponse(demo.persona_turn((req.persona or {}).get("event"), prior, req.messages))
     provider = get_provider(req.provider)
     if provider.client is None:
         return JSONResponse({"error": f"{provider.label} API 키가 설정되지 않았습니다."}, status_code=500)
@@ -271,6 +314,35 @@ def persona(req: PersonaReq):
     return JSONResponse({"facts": facts, "conflict": conflict})
 
 
+async def _emit(result: dict):
+    """구조화 결과 하나를 SSE(token* → meta → done)로 흘려준다. 실시간·시연 모드 공용."""
+    reply = str(result.get("reply", "")).strip()
+
+    # 1) reply를 짧게 끊어 타이핑 효과로 흘려준다
+    buf = ""
+    for ch in reply:
+        buf += ch
+        if len(buf) >= 2 or ch in " .,!?\n":
+            yield sse("token", {"text": buf})
+            buf = ""
+            await asyncio.sleep(0.012)
+    if buf:
+        yield sse("token", {"text": buf})
+
+    # 2) 보드 갱신·빠른답변 등 구조화 메타를 마지막에 전달
+    yield sse(
+        "meta",
+        {
+            "eventDetected": result.get("eventDetected"),
+            "askMissing": result.get("askMissing", []),
+            "quickReplies": result.get("quickReplies", []),
+            "boardOps": result.get("boardOps", []),
+            "userTodos": result.get("userTodos", []),
+        },
+    )
+    yield sse("done", {})
+
+
 @app.post("/api/chat")
 async def chat(req: ChatReq):
     # 동적 이벤트는 요청에 실린 플레이북을 우선 사용, 없으면 디스크에서 로드
@@ -279,41 +351,28 @@ async def chat(req: ChatReq):
     provider = get_provider(req.provider)
 
     async def gen():
+        if demo.enabled():
+            result = demo.chat_turn(req.event, req.messages)
+            result["reply"], _ = sanitize_reply(
+                str(result.get("reply", "")), json.dumps(playbook, ensure_ascii=False)
+            )
+            async for chunk in _emit(result):
+                yield chunk
+            return
+
         if provider.client is None:
             yield sse("error", {"message": f"{provider.label} API 키가 설정되지 않았습니다. backend/.env를 확인하세요."})
             return
 
         # LLM 호출은 동기 → 스레드로 빼서 이벤트 루프를 막지 않음
         try:
-            result = await asyncio.to_thread(call_chat, provider, system_prompt, req.messages)
+            grounded = json.dumps(playbook, ensure_ascii=False)
+            result = await asyncio.to_thread(call_chat, provider, system_prompt, req.messages, grounded)
         except Exception as e:  # noqa: BLE001
             yield sse("error", {"message": f"{provider.label} 호출 실패: {e}"})
             return
 
-        reply = str(result.get("reply", "")).strip()
-
-        # 1) reply를 짧게 끊어 타이핑 효과로 흘려준다
-        buf = ""
-        for ch in reply:
-            buf += ch
-            if len(buf) >= 2 or ch in " .,!?\n":
-                yield sse("token", {"text": buf})
-                buf = ""
-                await asyncio.sleep(0.012)
-        if buf:
-            yield sse("token", {"text": buf})
-
-        # 2) 보드 갱신·빠른답변 등 구조화 메타를 마지막에 전달
-        yield sse(
-            "meta",
-            {
-                "eventDetected": result.get("eventDetected"),
-                "askMissing": result.get("askMissing", []),
-                "quickReplies": result.get("quickReplies", []),
-                "boardOps": result.get("boardOps", []),
-                "userTodos": result.get("userTodos", []),
-            },
-        )
-        yield sse("done", {})
+        async for chunk in _emit(result):
+            yield chunk
 
     return StreamingResponse(gen(), media_type="text/event-stream")

@@ -100,6 +100,8 @@ interface State {
   appliedRegion: string | null; // 플레이북에 반영된 거주 지역(시도)
 
   board: BoardItem[];
+  /** 보드가 비어 있는 '이유'. null이면 정상(아직 대화 전이거나 절차가 담겼다) */
+  boardError: string | null;
   userTodos: UserTodo[];
   openTodoId: string | null;
   tab: Tab;
@@ -186,6 +188,7 @@ export const useStore = create<State>((set, get) => ({
   conflictPending: false,
   appliedRegion: null,
   board: [],
+  boardError: null,
   userTodos: [],
   openTodoId: null,
   tab: "chat",
@@ -267,6 +270,11 @@ export const useStore = create<State>((set, get) => ({
       procIndex,
       messages: [],
       board: [],
+      // 플레이북 자체가 비면 대화를 해도 보드에 담길 절차가 없다 → 이유를 바로 화면에 띄운다
+      boardError:
+        playbook.procedures.length === 0
+          ? "플레이북을 불러오지 못했어요 (절차 0건). 백엔드 /api/playbook 응답과 법령·복지 API 키 설정을 확인해 주세요."
+          : null,
       quickReplies: [],
       persona: { event, facts: {} },
       conflictPending: false,
@@ -280,7 +288,22 @@ export const useStore = create<State>((set, get) => ({
   },
 
   startScenario: async (key) => {
-    const playbook = await fetchPlaybook(key);
+    let playbook: Playbook;
+    try {
+      playbook = await fetchPlaybook(key);
+    } catch (e) {
+      // 플레이북을 못 받아도 화면을 열고 '이유'를 보여준다(빈 화면으로 두지 않는다)
+      playbook = {
+        event: key,
+        title: SCENARIO_MAP[key]?.title ?? "",
+        emoji: SCENARIO_MAP[key]?.emoji ?? "🌰",
+        intro: "",
+        procedures: [],
+      };
+      await get().enterEvent(key, playbook, SCENARIO_MAP[key].opener);
+      set({ boardError: `플레이북을 불러오지 못했어요 — ${e instanceof Error ? e.message : e}` });
+      return;
+    }
     await get().enterEvent(key, playbook, SCENARIO_MAP[key].opener);
   },
 
@@ -293,6 +316,7 @@ export const useStore = create<State>((set, get) => ({
     if (get().event === key) {
       patch.messages = [];
       patch.board = [];
+      patch.boardError = null;
       patch.userTodos = [];
       patch.openTodoId = null;
       patch.quickReplies = [];
@@ -365,6 +389,7 @@ export const useStore = create<State>((set, get) => ({
       streaming: true,
       quickReplies: [],
       error: null,
+      boardError: null,
     }));
 
     const history = get().messages.filter((m) => m.content.length > 0);
@@ -459,7 +484,18 @@ export const useStore = create<State>((set, get) => ({
           return { board, procIndex, userTodos, quickReplies: meta.quickReplies ?? [], messages: msgs };
         }),
       onDone: () => {
-        set({ streaming: false });
+        // 응답이 끝났는데 보드가 여전히 비어 있으면 '조용한 빈 화면' 대신 이유를 남긴다.
+        set((s) => {
+          if (s.board.length > 0 || s.userTodos.length > 0) return { streaming: false, boardError: null };
+          const n = s.playbook?.procedures.length ?? 0;
+          const waiting = (s.quickReplies?.length ?? 0) > 0;
+          return {
+            streaming: false,
+            boardError: waiting
+              ? null // 되묻는 턴이라 아직 담을 절차가 없는 정상 상태
+              : `응답은 왔지만 보드에 담긴 절차가 없어요. 모델이 절차 id를 돌려주지 않았을 수 있어요 (플레이북 절차 ${n}건). 같은 질문을 한 번 더 보내거나 시나리오를 다시 시작해 주세요.`,
+          };
+        });
         get().persistCurrent(); // 응답 완료 시 세션 저장
       },
       onError: (message) =>
@@ -467,7 +503,12 @@ export const useStore = create<State>((set, get) => ({
           const msgs = [...s.messages];
           const last = msgs[msgs.length - 1];
           if (last?.role === "assistant" && !last.content) msgs.pop();
-          return { streaming: false, error: message, messages: msgs };
+          return {
+            streaming: false,
+            error: message,
+            boardError: s.board.length === 0 ? `절차를 불러오지 못했어요 — ${message}` : s.boardError,
+            messages: msgs,
+          };
         }),
     },
     // 현재 플레이북 + 페르소나 + 선택한 LLM을 함께 보낸다
@@ -528,6 +569,7 @@ export const useStore = create<State>((set, get) => ({
       procIndex: {},
       messages: [],
       board: [],
+      boardError: null,
       userTodos: [],
       openTodoId: null,
       quickReplies: [],

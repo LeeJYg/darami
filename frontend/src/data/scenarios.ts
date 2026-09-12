@@ -10,6 +10,9 @@ export interface ScenarioPreset {
   opener: string;
 }
 
+/** 여러 이벤트를 한 보드로 합쳐 쓰는 복합 이벤트(백엔드 compose.COMPOSITES 와 키를 맞춘다) */
+export const COMPOSITE_EVENTS: EventKey[] = ["birth-move"];
+
 export const SCENARIOS: ScenarioPreset[] = [
   {
     key: "move",
@@ -28,6 +31,15 @@ export const SCENARIOS: ScenarioPreset[] = [
     blurb: "첫 아이 생후 5일, 출생신고와 지원금 신청, 혜택이 헷갈림",
     opener:
       "첫 아이가 5일 전에 태어났어요. 서울 양천구 목동에 살아요. 출생신고랑 받을 수 있는 지원금을 챙기고 싶은데 중앙정부, 서울시, 구청 혜택이 섞여서 헷갈려요.",
+  },
+  {
+    key: "birth-move",
+    title: "출산 후 이사",
+    emoji: "👶📦",
+    persona: "이서연 · 33세 · 양천구 목동",
+    blurb: "출산 3주 뒤 이사 — 출산·이사 절차를 한 보드로",
+    opener:
+      "3주 전에 첫 아이가 태어났는데 다음 달에 서울 양천구로 이사도 가요. 출생신고랑 이사 절차가 섞여서 뭘 먼저 해야 할지 모르겠어요.",
   },
   {
     key: "resignation",

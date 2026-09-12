@@ -35,13 +35,31 @@ function fallbackProc(id: string): Procedure {
 
 export default function TaskBoard() {
   const {
-    board, procIndex, openProc, toggleDone, persona, event,
+    board, boardError, procIndex, openProc, toggleDone, persona, event,
     userTodos, openTodoId, addUserTodo, toggleUserTodo, removeUserTodo, openTodo, updateTodoNote,
   } = useStore();
 
   if (board.length === 0 && userTodos.length === 0) {
+    // 보드가 빈 채로 끝났으면 '조용한 빈 화면' 대신 원인을 보여준다(부스에서 시연자가 바로 알 수 있게).
+    if (boardError) {
+      return (
+        <div
+          data-testid="board-error"
+          className="flex-1 flex flex-col items-center justify-center text-center px-8"
+        >
+          <div className="text-4xl mb-3">⚠️</div>
+          <p className="text-sm font-semibold text-red-600 mb-2">절차를 보드에 담지 못했어요</p>
+          <p className="text-xs leading-relaxed text-acorn/70 max-w-xs whitespace-pre-line">
+            {boardError}
+          </p>
+        </div>
+      );
+    }
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 text-acorn/50">
+      <div
+        data-testid="board-empty"
+        className="flex-1 flex flex-col items-center justify-center text-center px-8 text-acorn/50"
+      >
         <div className="text-4xl mb-3">🌰</div>
         <p className="text-sm">
           대화를 시작하면 다람이가<br />필요한 절차를 모아 여기에 담아줘요.
@@ -59,7 +77,7 @@ export default function TaskBoard() {
   const doneCount = board.filter((b) => b.status === "done").length;
 
   return (
-    <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-4">
+    <div data-testid="board-list" className="flex-1 overflow-y-auto no-scrollbar px-4 py-4">
       {/* 진행률 */}
       <div className="mb-4">
         <div className="flex justify-between text-[11px] text-acorn/60 mb-1">
@@ -99,6 +117,7 @@ export default function TaskBoard() {
               {groupItems.map(({ b, p }) => (
                 <div
                   key={b.id}
+                  data-testid="board-item"
                   className="bg-white rounded-xl border border-sand p-3 flex items-center gap-3 active:scale-[0.99] transition"
                 >
                   <button

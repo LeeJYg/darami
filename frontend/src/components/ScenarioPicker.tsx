@@ -77,6 +77,7 @@ export default function ScenarioPicker() {
             sub={s.persona}
             blurb={s.blurb}
             loading={loading === s.key}
+            testId={`scenario-${s.key}`}
             onClick={() => start(s.key)}
             disabled={loading !== null || generating}
             resumable={hasSession(s.key)}
@@ -194,6 +195,7 @@ function EventCard({
   resumable,
   onReload,
   onDelete,
+  testId,
 }: {
   emoji: string;
   title: string;
@@ -205,10 +207,12 @@ function EventCard({
   resumable?: boolean;
   onReload?: () => void;
   onDelete?: () => void;
+  testId?: string;
 }) {
   return (
     <div className="relative group">
       <button
+        data-testid={testId}
         disabled={disabled}
         onClick={onClick}
         className={`w-full text-left bg-white rounded-2xl p-4 shadow-sm border active:scale-[0.98] transition disabled:opacity-60 ${

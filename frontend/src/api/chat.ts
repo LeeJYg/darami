@@ -8,6 +8,7 @@ import type {
   PersonaResult,
   UserPersona,
 } from "../types";
+import { COMPOSITE_EVENTS } from "../data/scenarios";
 
 /** 백엔드가 보고하는 LLM provider 가용성 */
 export interface ProviderInfo {
@@ -133,7 +134,12 @@ export async function streamChat(
 
 export async function fetchPlaybook(event: EventKey, region?: string | null): Promise<Playbook> {
   const q = region ? `?region=${encodeURIComponent(region)}` : "";
-  const res = await fetch(`/api/playbook/${event}${q}`);
+  // 복합 이벤트(출산 후 이사 등)는 재료 이벤트를 합쳐 한 보드로 주는 compose 라우트를 쓴다
+  const path = COMPOSITE_EVENTS.includes(event)
+    ? `/api/playbook/compose/${event}`
+    : `/api/playbook/${event}`;
+  const res = await fetch(`${path}${q}`);
+  if (!res.ok) throw new Error(`플레이북 조회 실패 (${res.status})`);
   return (await res.json()) as Playbook;
 }
 

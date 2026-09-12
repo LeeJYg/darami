@@ -116,6 +116,7 @@ export default function ChatPanel() {
       {/* 입력 */}
       <div className="border-t border-sand bg-cream px-3 py-2.5 flex items-center gap-2">
         <input
+          data-testid="chat-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit(input)}
