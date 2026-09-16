@@ -36,7 +36,10 @@ export function computeDday(
   if (typeof win !== "number" || win <= 0 || win >= 3650) return null; // 기간 미상 항목 제외
   const facts = persona?.facts;
   if (!facts) return null;
-  const key = p.anchor || (event ? DEFAULT_ANCHOR[event] : undefined) || "event_date";
+  // 복합 이벤트(birth-move 등)는 이벤트 자체의 기준일이 없으므로, 절차가 온 원래 이벤트의 기준일을 쓴다.
+  //   예) 출산 후 이사: 출생신고 → birth_date, 전입신고 → move_date
+  const origin = (p.fromEvents || []).map((e) => DEFAULT_ANCHOR[e]).find(Boolean);
+  const key = p.anchor || (event ? DEFAULT_ANCHOR[event] : undefined) || origin || "event_date";
   const anchor = parseISO(facts[key]);
   if (!anchor) return null;
   const deadline = new Date(anchor);

@@ -312,7 +312,30 @@ def persona(req: PersonaReq):
     #   대조할 기존 facts가 없으면(첫 입력 등) 모델이 confirm성 conflict를 만들어도 무시 → 빈 facts 루프 차단.
     if not prior_facts:
         conflict = None
+    # ★ 룰 3b를 코드로 강제: 최신 사용자 입력과 아무 낱말도 겹치지 않는 되묻기는 모델의 오탐이다.
+    #   (실측 2026-09-17: 이사 시나리오에서 "전입신고 안 하면 과태료 얼마예요?"에
+    #    "처음엔 첫째만 있다고 하셨는데… 아이 수를 알려주세요"가 나와 답변이 통째로 막혔다.)
+    last_user = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    if conflict and not conflict_grounded(conflict, last_user):
+        conflict = None
     return JSONResponse({"facts": facts, "conflict": conflict})
+
+
+_STOP_BIGRAMS = {"그리", "그런", "제가", "저는", "저희", "혹시", "어떻", "어떤", "얼마", "알려", "있어", "없어", "하면",
+                 "해요", "해주", "주세", "나요", "인가", "뭐가", "무엇", "이번", "지금", "그냥", "그럼", "근데", "그래"}
+
+
+def conflict_grounded(conflict: dict, last_user: str) -> bool:
+    """되묻기(conflict)가 최신 사용자 입력에 실제로 근거하는지: 입력 낱말의 앞 두 글자가 질문·보기에 하나라도 나오면 근거 있음."""
+    import re as _re
+    target = str(conflict.get("question", "")) + " " + " ".join(map(str, conflict.get("options") or []))
+    for w in _re.findall(r"[0-9A-Za-z가-힣]{2,}", last_user or ""):
+        head = w[:2]
+        if head in _STOP_BIGRAMS:
+            continue
+        if head in target:
+            return True
+    return False
 
 
 async def _emit(result: dict):

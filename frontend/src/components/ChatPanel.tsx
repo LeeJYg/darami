@@ -170,15 +170,49 @@ function Bubble({ role, text }: { role: string; text: string }) {
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} gap-2`}>
       {!isUser && <DaramiAvatar />}
       <div
-        className={`max-w-[78%] px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap rounded-2xl ${
+        className={`min-w-0 [overflow-wrap:anywhere] max-w-[78%] px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap rounded-2xl ${
           isUser
             ? "bg-nut text-white rounded-br-md"
             : "bg-white text-acorn border border-sand rounded-bl-md"
         }`}
       >
-        {text || "…"}
+        {text ? <Linkified text={text} light={isUser} /> : "…"}
       </div>
     </div>
+  );
+}
+
+const URL_RE = /(https?:\/\/[^\s)"'<>]+)/g;
+
+/** 답변 속 긴 출처 URL을 그대로 쏟지 않고 '도메인 ↗' 링크 칩으로 줄여 보여준다. */
+function Linkified({ text, light }: { text: string; light: boolean }) {
+  const parts = text.split(URL_RE);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part;
+        let host = part;
+        try {
+          host = new URL(part).hostname.replace(/^www\./, "");
+        } catch {
+          /* 형식이 이상하면 원문 그대로 */
+        }
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noreferrer"
+            title={part}
+            className={`inline-block align-baseline mx-0.5 px-1.5 rounded-md text-[11.5px] underline-offset-2 hover:underline ${
+              light ? "bg-white/20 text-white" : "bg-leaf/10 text-leaf border border-leaf/30"
+            }`}
+          >
+            {host} ↗
+          </a>
+        );
+      })}
+    </>
   );
 }
 

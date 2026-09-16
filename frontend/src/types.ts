@@ -27,6 +27,8 @@ export interface Procedure {
   summary: string;
   /** deadlineDays를 어느 기준일(페르소나 날짜 key)로부터 셀지. 없으면 이벤트 기본값. */
   anchor?: string;
+  /** 복합 이벤트 보드에서 이 절차가 온 원래 이벤트들(예: ["birth"]). 기준일을 고를 때 쓴다. */
+  fromEvents?: string[];
   /** 큐레이션 agent의 grounding 상태 (verified/partial=공식출처, ai=AI생성·미검증) */
   verification_status?: "verified" | "partial" | "needs_review" | "unverified";
 }
