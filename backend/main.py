@@ -28,6 +28,7 @@ from openai import OpenAI
 import demo
 from compose import COMPOSITES, merge_playbooks
 from guard import sanitize_reply
+from verified_move import answer as verified_move_answer
 from prompts import build_system_prompt, build_generation_prompt, build_persona_prompt
 from sources.curate import curate_event, legal_for, curate_dynamic
 
@@ -351,6 +352,12 @@ async def chat(req: ChatReq):
     provider = get_provider(req.provider)
 
     async def gen():
+        latest = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+        verified = verified_move_answer(latest)
+        if verified is not None:
+            async for chunk in _emit({"reply": verified, "boardOps": []}):
+                yield chunk
+            return
         if demo.enabled():
             result = demo.chat_turn(req.event, req.messages)
             result["reply"], _ = sanitize_reply(
