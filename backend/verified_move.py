@@ -3,8 +3,15 @@ LAW_URL = "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=3&cciNo=2&cnpClsNo
 CONTACT_URL = "https://www.data.go.kr/data/15093649/fileData.do"
 
 
+MOVE_WORDS = ("전입신고", "전입 신고", "이사")
+PENALTY_WORDS = ("과태료", "벌금", "벌칙", "불이익")
+
+
 def answer(question: str) -> str | None:
-    if "전입신고" not in question or "과태료" not in question:
+    is_move = any(w in question for w in MOVE_WORDS)
+    if not is_move or not any(w in question for w in PENALTY_WORDS):
+        return None
+    if "이사" in question and "신고" not in question and "전입" not in question:
         return None
     reply = (
         "정당한 사유 없이 이사 후 14일 이내에 전입신고를 하지 않으면 "
