@@ -18,7 +18,7 @@ import {
   streamChat,
   updatePersona,
 } from "./api/chat";
-import { SCENARIO_MAP } from "./data/scenarios";
+import { SCENARIO_MAP, COMPOSITE_EVENTS } from "./data/scenarios";
 import { DEFAULT_LLM } from "./data/llm";
 
 type Tab = "chat" | "board";
@@ -263,13 +263,22 @@ export const useStore = create<State>((set, get) => ({
       return;
     }
     // 새 대화 — 빈 페르소나로 시작
+    // 복합 이벤트(예: 출산 후 이사)는 LLM이 이번 대화에서 무엇을 add 하느냐에 따라
+    // 보드 카드 수가 매번 달라진다(부스 시연에서 카드 5장→2장으로 흔들리는 원인).
+    // 이미 서버가 병합·정렬해 준 필수(must) 절차는 대화 없이도 확정된 사실이므로
+    // 첫 화면부터 채워 두고, LLM은 그 위에 추가·상태 변경만 한다.
+    const prefill: BoardItem[] = COMPOSITE_EVENTS.includes(event)
+      ? playbook.procedures
+          .filter((p) => p.priority === "must")
+          .map((p) => ({ id: p.id, status: "waiting" as const }))
+      : [];
     set({
       started: true,
       event,
       playbook,
       procIndex,
       messages: [],
-      board: [],
+      board: prefill,
       // 플레이북 자체가 비면 대화를 해도 보드에 담길 절차가 없다 → 이유를 바로 화면에 띄운다
       boardError:
         playbook.procedures.length === 0
