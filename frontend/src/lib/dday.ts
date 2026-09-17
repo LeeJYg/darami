@@ -33,7 +33,7 @@ export function computeDday(
   event: EventKey | null
 ): number | null {
   const win = p.deadlineDays;
-  if (typeof win !== "number" || win <= 0 || win >= 3650) return null; // 기간 미상 항목 제외
+  if (typeof win !== "number" || win < 0 || win >= 3650) return null; // 0은 당일 기한, 음수·기간 미상 항목 제외
   const facts = persona?.facts;
   if (!facts) return null;
   // 복합 이벤트(birth-move 등)는 이벤트 자체의 기준일이 없으므로, 절차가 온 원래 이벤트의 기준일을 쓴다.
