@@ -35,6 +35,7 @@ SEED_LEGAL: dict[str, dict] = {
     "pension-change": common_ref("pension-change"),
     # 시나리오 고유 법령 절차
     "school-transfer": {"law_query": "초·중등교육법 시행령", "article_title": "초등학교의 전학절차", "expected_days": None},
+    "deposit-protection": {"law_query": "주택임대차보호법", "article_title": "대항력 등", "expected_days": 0},
     "severance-pay": {"law_query": "근로자퇴직급여 보장법", "article_title": "퇴직금의 지급", "expected_days": 14},
 }
 
