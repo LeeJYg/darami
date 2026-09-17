@@ -24,6 +24,8 @@ export interface Procedure {
   link: string;
   source: Source;
   condition: string;
+  /** true면 이 이벤트를 겪는 모든 사람에게 조건 확인 없이 적용된다(대화 시작 전 보드 프리필에 씀). */
+  unconditional?: boolean;
   summary: string;
   /** deadlineDays를 어느 기준일(페르소나 날짜 key)로부터 셀지. 없으면 이벤트 기본값. */
   anchor?: string;

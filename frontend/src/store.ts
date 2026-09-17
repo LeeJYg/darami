@@ -278,11 +278,12 @@ export const useStore = create<State>((set, get) => ({
     // 새 대화 — 빈 페르소나로 시작
     // 복합 이벤트(예: 출산 후 이사)는 LLM이 이번 대화에서 무엇을 add 하느냐에 따라
     // 보드 카드 수가 매번 달라진다(부스 시연에서 카드 5장→2장으로 흔들리는 원인).
-    // 이미 서버가 병합·정렬해 준 필수(must) 절차는 대화 없이도 확정된 사실이므로
-    // 첫 화면부터 채워 두고, LLM은 그 위에 추가·상태 변경만 한다.
+    // 이미 서버가 병합·정렬해 준 필수(must) 절차 중, 조건 확인 없이도 확정된(unconditional) 것만
+    // 첫 화면부터 채운다. "초등학교 전학"·"자동차 주소지 변경"처럼 조건이 딸린 절차는
+    // 페르소나 사실이 확인된 뒤 LLM이 boardOps로 추가한다.
     const prefill: BoardItem[] = COMPOSITE_EVENTS.includes(event)
       ? playbook.procedures
-          .filter((p) => p.priority === "must")
+          .filter((p) => p.priority === "must" && p.unconditional)
           .map((p) => ({ id: p.id, status: "waiting" as const }))
       : [];
     set({

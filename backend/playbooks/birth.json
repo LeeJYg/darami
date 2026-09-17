@@ -17,6 +17,7 @@
       "link": "https://www.gov.kr/main?a=AA020InfoCappViewApp&CappBizCD=13100000035",
       "source": { "name": "정부24", "tier": "reference", "checkedAt": "" },
       "condition": "모든 출생 공통. 다른 모든 혜택의 선행 절차.",
+      "unconditional": true,
       "summary": "출생 후 기한 내 신고해야 합니다. 일부 병원은 온라인 출생신고 연계가 가능해 방문 없이 처리할 수 있어요. 출생신고가 완료되어야 각종 지원금을 신청할 수 있습니다."
     },
     {
@@ -31,6 +32,7 @@
       "link": "",
       "source": { "name": "", "tier": "reference", "checkedAt": "" },
       "condition": "출생신고된 출생아.",
+      "unconditional": true,
       "summary": ""
     },
     {
@@ -45,6 +47,7 @@
       "link": "",
       "source": { "name": "", "tier": "reference", "checkedAt": "" },
       "condition": "만 8세 미만 아동.",
+      "unconditional": true,
       "summary": ""
     },
     {
@@ -59,6 +62,7 @@
       "link": "",
       "source": { "name": "", "tier": "reference", "checkedAt": "" },
       "condition": "0~23개월 영아.",
+      "unconditional": true,
       "summary": ""
     },
     {
@@ -73,6 +77,7 @@
       "link": "",
       "source": { "name": "", "tier": "reference", "checkedAt": "" },
       "condition": "어린이집·유치원 미이용(가정양육) 영유아.",
+      "unconditional": false,
       "summary": ""
     },
     {
@@ -87,6 +92,7 @@
       "link": "",
       "source": { "name": "", "tier": "reference", "checkedAt": "" },
       "condition": "거주 지자체의 임산부 교통비 지원(해당 지역).",
+      "unconditional": false,
       "summary": ""
     }
   ]
