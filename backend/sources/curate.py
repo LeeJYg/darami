@@ -150,8 +150,8 @@ def _apply_legal(out: dict, g: dict) -> dict:
             "tier": "official" if status == "verified" else "reference",
             "checkedAt": g.get("fetched_at", ""),
         }
-        if status == "verified" and g.get("deadline_days_in_law"):
-            out["deadlineDays"] = g["deadline_days_in_law"]
+        if status == "verified" and g.get("deadline_days_in_law") is not None:
+            out["deadlineDays"] = g["deadline_days_in_law"]  # 0(당일)도 유효한 값 — falsy로 건너뛰면 안 됨
         # 동적 절차는 deadline/summary가 비어 있으므로 법령 데이터로 채운다(seed가 있으면 유지)
         if not (out.get("deadline") or "").strip() and g.get("deadline_in_law_text"):
             out["deadline"] = g["deadline_in_law_text"]
@@ -242,10 +242,18 @@ def _judge_article(solar_json, name: str, law_name: str, article: str) -> bool:
 
 
 def _proc_from_common(key: str) -> dict:
-    """공통/학습 카탈로그 절차를 고정 ref로 결정론적 grounding."""
+    """공통/학습 카탈로그 절차를 고정 ref로 결정론적 grounding.
+    법령 API(LAW_OC 키)가 없거나 live 검증에 실패해도, 사람이 검수해 등록한 카탈로그의
+    expected_days는 신뢰 가능한 값이므로 기한 계산·D-day 배지가 9999(기간 미상)로 새지 않게
+    폴백으로 채운다(출처 표기는 needs_review 그대로 두어 grounding 상태를 숨기지 않는다)."""
     c = catalog()[key]
     out = _base_proc(key, c["name"], c.get("priority", "nice"), c.get("condition", ""))
-    return _enrich_legal(out, common_ref(key))
+    out = _enrich_legal(out, common_ref(key))
+    if out.get("deadlineDays") == 9999:
+        expected = (common_ref(key) or {}).get("expected_days")
+        if isinstance(expected, int):
+            out["deadlineDays"] = expected
+    return out
 
 
 def curate_dynamic(description: str, persona: dict, solar_json) -> dict:
