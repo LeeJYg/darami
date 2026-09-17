@@ -1,4 +1,6 @@
 """Narrow, source-backed answers; never infer a resident's dong from a city."""
+import re
+
 LAW_URL = "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=3&cciNo=2&cnpClsNo=1&csmSeq=629"
 CONTACT_URL = "https://www.data.go.kr/data/15093649/fileData.do"
 LEASE_LAW_SOURCE = "국가법령정보센터(law.go.kr) 주택임대차보호법 제3조·제3조의2 (2026-01-02 시행판)"
@@ -45,9 +47,35 @@ def _deposit_protection_answer(question: str) -> str:
         f"출처: {LEASE_LAW_SOURCE}"
     )
     if any(w in question for w in LOAN_WORDS):
-        reply += (
-            "\n잔금을 치르는 날 등기부등본을 다시 한번 확인하고, 그날 바로 전입신고와 확정일자를 함께 처리하는 것이 "
-            "가장 안전합니다. 구체적인 위험 여부는 등기부의 실제 권리관계를 봐야 판단할 수 있어 "
-            "여기서 '안전하다/위험 없다'로 단정하지 않습니다."
-        )
+        reply += "\n잔금을 치르는 날 등기부등본을 다시 한번 확인하고, 그날 바로 전입신고와 확정일자를 함께 처리하세요."
+    reply += (
+        "\n구체적인 위험 여부는 등기부의 실제 권리관계를 봐야 판단할 수 있어 "
+        "여기서 '안전하다/위험 없다'로 단정하지 않습니다."
+    )
     return reply
+
+
+def board_ops(question: str, playbook: dict | None) -> list[dict]:
+    """고정답으로 답한 확정일자 질문도 보드에 절차 카드를 올린다(대화만 하고 보드가 비는 것 방지)."""
+    ids = {p.get("id") for p in (playbook or {}).get("procedures", [])}
+    if any(w in question for w in DEPOSIT_WORDS) and "deposit-protection" in ids:
+        return [{"op": "add", "id": "deposit-protection", "status": "waiting"}]
+    return []
+
+
+SOFT_WORDS = ("가까운 시일", "여유", "천천히", "나중에", "편하실 때")
+SAME_DAY_SENTENCE = (
+    "확정일자는 오늘(잔금·입주 당일) 전입신고와 함께 받으세요. "
+    "대항력은 다음 날 0시부터 생겨, 같은 날 설정된 근저당보다 뒤에 설 수 있어요."
+)
+
+
+def enforce_same_day(reply: str, ops: list) -> str:
+    """확정일자 카드를 올린 턴에는 '당일' 기한이 느슨하게 들리지 않도록 코드로 고정한다(temperature 0.3 실측 2/3 느슨)."""
+    if not any(o.get("op") == "add" and o.get("id") == "deposit-protection" for o in ops or []):
+        return reply
+    sentences = re.split(r"(?<=[.!?])\s+", reply.strip())
+    kept = [s for s in sentences if not ("확정일자" in s and any(w in s for w in SOFT_WORDS))]
+    strong = any("확정일자" in s and ("오늘" in s or "당일" in s) for s in kept)
+    out = " ".join(kept)
+    return out if strong else f"{out} {SAME_DAY_SENTENCE}".strip()

@@ -30,7 +30,7 @@ from openai import OpenAI
 import demo
 from compose import COMPOSITES, merge_playbooks
 from guard import sanitize_reply
-from verified_move import answer as verified_move_answer
+from verified_move import answer as verified_move_answer, board_ops as verified_board_ops, enforce_same_day
 from prompts import build_system_prompt, build_generation_prompt, build_persona_prompt
 from sources.curate import curate_event, legal_for, curate_dynamic
 
@@ -251,7 +251,7 @@ def call_chat(
         raw, {"reply": raw, "eventDetected": None, "askMissing": [], "quickReplies": [], "boardOps": []}
     )
     clean, removed = sanitize_reply(str(result.get("reply", "")), grounded or "")
-    result["reply"] = clean
+    result["reply"] = enforce_same_day(clean, result.get("boardOps", []))
     if removed:
         result["ungroundedRemoved"] = removed
     return result
@@ -405,7 +405,7 @@ async def chat(req: ChatReq):
         latest = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
         verified = verified_move_answer(latest)
         if verified is not None:
-            async for chunk in _emit({"reply": verified, "boardOps": []}):
+            async for chunk in _emit({"reply": verified, "boardOps": verified_board_ops(latest, playbook)}):
                 yield chunk
             return
         if demo.enabled():

@@ -20,6 +20,25 @@ def _today_block() -> str:
     return f"[오늘 날짜]\n{today_str()}\n(상대적 날짜 표현은 반드시 이 날짜를 기준으로 계산한다. 네 학습 지식의 날짜를 쓰지 말 것.)"
 
 
+def _deadline_table(procedures: list) -> str:
+    """오늘이 기준일일 때의 절차별 마감일을 코드로 계산해 준다. Solar가 '오늘+14일'을 틀리게 더한 실측이 있다."""
+    t = date.today()
+    lines = []
+    for p in procedures:
+        d = p.get("deadlineDays")
+        if not isinstance(d, int) or d < 0 or d >= 3650:
+            continue
+        due = date.fromordinal(t.toordinal() + d)
+        lines.append(f"- {p['id']}: 기준일이 오늘이면 {due.isoformat()} ({_WEEKDAY_KR[due.weekday()]})")
+    if not lines:
+        return ""
+    return (
+        "[마감일 계산표]\n" + "\n".join(lines) +
+        "\n(reply에 마감 날짜를 쓸 때는 이 표의 값만 그대로 쓴다. 날짜를 직접 더해 계산하지 말 것. "
+        "기준일(이사일·출생일 등)이 오늘이 아니면 날짜를 쓰지 말고 deadline 문구만 말한다.)"
+    )
+
+
 PERSONA = """너는 '다람이', 한국 공공서비스 생활 이벤트 안내 AI 에이전트다.
 다람쥐가 흩어진 도토리를 모으듯, 흩어진 행정 절차를 찾아 모아 사용자가 끝까지 처리하도록 돕는다.
 말투는 친근하고 차분한 존댓말. 한 번에 한두 가지만 묻고, 사용자를 안심시킨다."""
@@ -221,6 +240,8 @@ def build_system_prompt(playbook: dict, persona: dict = None) -> str:
     return f"""{PERSONA}
 
 {_today_block()}
+
+{_deadline_table(playbook.get("procedures", []))}
 
 {RULES}
 
