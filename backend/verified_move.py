@@ -63,6 +63,21 @@ def board_ops(question: str, playbook: dict | None) -> list[dict]:
     return []
 
 
+LEASE_WORDS = ("전세", "월세", "임차", "보증금") + DEPOSIT_WORDS
+
+
+def ensure_deposit_card(question: str, ops: list, playbook: dict | None) -> list:
+    """확정일자 카드는 LLM의 boardOps 선택에만 맡기지 않는다(놓치면 보증금 전액이 걸림).
+    질문에 임차 신호가 있고 플레이북에 절차가 있는데 LLM이 add하지 않았으면 코드로 추가한다."""
+    ids = {p.get("id") for p in (playbook or {}).get("procedures", [])}
+    if "deposit-protection" not in ids or not any(w in question for w in LEASE_WORDS):
+        return ops
+    already = any(o.get("op") == "add" and o.get("id") == "deposit-protection" for o in ops or [])
+    if already:
+        return ops
+    return list(ops or []) + [{"op": "add", "id": "deposit-protection", "status": "waiting"}]
+
+
 SOFT_WORDS = ("가까운 시일", "여유", "천천히", "나중에", "편하실 때")
 SAME_DAY_SENTENCE = (
     "확정일자는 오늘(잔금·입주 당일) 전입신고와 함께 받으세요. "

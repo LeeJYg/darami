@@ -327,6 +327,13 @@ def curate_dynamic(description: str, persona: dict, solar_json) -> dict:
             procedures.append(_proc_from_common(ck))
             used_common.add(ck)
 
+    # 4b) 보증금 보호(확정일자·대항력)는 LLM의 자유 선택에 맡기지 않는다. 놓치면 보증금
+    #     전액이 걸리는 안전 문제라, 설명에 전세·월세 신호가 있으면 코드로 강제 포함한다.
+    if "deposit-protection" not in used_common and "deposit-protection" in cat:
+        if any(w in description for w in ("전세", "월세", "임차", "보증금", "확정일자", "대항력")):
+            procedures.append(_proc_from_common("deposit-protection"))
+            used_common.add("deposit-protection")
+
     return {
         "event": plan.get("event") or "custom",
         "title": plan.get("title") or "내 생활 이벤트",

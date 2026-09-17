@@ -34,6 +34,11 @@ COMMON: dict[str, dict] = {
         "name": "자동차 주소지 변경", "priority": "must", "condition": "차량 보유자가 주소를 옮긴 경우.",
         "ref": {"law_query": "자동차관리법", "article_title": "변경등록", "expected_days": None},
     },
+    "deposit-protection": {
+        "name": "확정일자 받기 (전입신고와 같은 날)", "priority": "must",
+        "condition": "전세·월세 등 임차로 이사하는 경우(자가 매매 이사는 해당 없음).", "crosscut": True,
+        "ref": {"law_query": "주택임대차보호법", "article_title": "대항력 등", "expected_days": 0},
+    },
     # cross-cutting (이사·퇴사·출산 등 여러 이벤트에 걸침 → 해당 시 후보)
     "health-insurance-change": {
         "name": "건강보험 자격·주소 변경", "priority": "nice",

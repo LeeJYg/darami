@@ -30,7 +30,12 @@ from openai import OpenAI
 import demo
 from compose import COMPOSITES, merge_playbooks
 from guard import sanitize_reply
-from verified_move import answer as verified_move_answer, board_ops as verified_board_ops, enforce_same_day
+from verified_move import (
+    answer as verified_move_answer,
+    board_ops as verified_board_ops,
+    enforce_same_day,
+    ensure_deposit_card,
+)
 from prompts import build_system_prompt, build_generation_prompt, build_persona_prompt
 from sources.curate import curate_event, legal_for, curate_dynamic
 
@@ -238,6 +243,7 @@ def call_chat(
     system_prompt: str,
     messages: list[Message],
     grounded: str | None = None,
+    playbook: dict | None = None,
 ) -> dict:
     """선택된 LLM을 호출해 대화용 구조화 JSON 응답을 받는다.
 
@@ -251,7 +257,10 @@ def call_chat(
         raw, {"reply": raw, "eventDetected": None, "askMissing": [], "quickReplies": [], "boardOps": []}
     )
     clean, removed = sanitize_reply(str(result.get("reply", "")), grounded or "")
-    result["reply"] = enforce_same_day(clean, result.get("boardOps", []))
+    latest = next((m.content for m in reversed(messages) if m.role == "user"), "")
+    ops = ensure_deposit_card(latest, result.get("boardOps", []), playbook)
+    result["boardOps"] = ops
+    result["reply"] = enforce_same_day(clean, ops)
     if removed:
         result["ungroundedRemoved"] = removed
     return result
@@ -424,7 +433,7 @@ async def chat(req: ChatReq):
         # LLM 호출은 동기 → 스레드로 빼서 이벤트 루프를 막지 않음
         try:
             grounded = json.dumps(playbook, ensure_ascii=False)
-            result = await asyncio.to_thread(call_chat, provider, system_prompt, req.messages, grounded)
+            result = await asyncio.to_thread(call_chat, provider, system_prompt, req.messages, grounded, playbook)
         except Exception as e:  # noqa: BLE001
             yield sse("error", {"message": f"{provider.label} 호출 실패: {e}"})
             return
