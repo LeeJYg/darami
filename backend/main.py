@@ -14,6 +14,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
+from datetime import date, timedelta
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
@@ -318,7 +320,32 @@ def persona(req: PersonaReq):
     last_user = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
     if conflict and not conflict_grounded(conflict, last_user):
         conflict = None
+    # ★ "N일/N주 전에 태어났다"는 모델이 환산하면 틀린다(실측 2026-09-17: "3주 전"을 4주 전으로 저장 → 출생신고 D-2).
+    #   처음 한 번은 코드로 오늘 기준 환산한다. 이미 저장된 birth_date 는 룰 1-1(재계산 금지)대로 둔다.
+    if not prior_facts.get("birth_date"):
+        born = birth_date_from_text([m.content for m in req.messages if m.role == "user"])
+        if born:
+            facts = {**facts, "birth_date": born}
     return JSONResponse({"facts": facts, "conflict": conflict})
+
+
+_KO_NUM = {"하루": 1, "이틀": 2, "사흘": 3, "나흘": 4, "한": 1, "두": 2, "세": 3, "네": 4, "다섯": 5, "여섯": 6}
+_BORN_AGO = re.compile(r"(\d+|하루|이틀|사흘|나흘|다섯|여섯|한|두|세|네)\s*(일|주)?\s*전에?[^.?!\n]{0,15}?(태어|출산|낳)")
+
+
+def birth_date_from_text(user_texts: list[str], today: Optional[date] = None) -> Optional[str]:
+    """사용자 입력의 'N일/N주 전에 태어났다'를 절대일자(YYYY-MM-DD)로. 해당 표현이 없으면 None."""
+    today = today or date.today()
+    for text in user_texts:
+        m = _BORN_AGO.search(text or "")
+        if not m:
+            continue
+        n = int(m.group(1)) if m.group(1).isdigit() else _KO_NUM[m.group(1)]
+        unit = m.group(2) or ("일" if m.group(1) in ("하루", "이틀", "사흘", "나흘") else None)
+        if unit is None:
+            continue
+        return (today - timedelta(days=n * (7 if unit == "주" else 1))).isoformat()
+    return None
 
 
 _STOP_BIGRAMS = {"그리", "그런", "제가", "저는", "저희", "혹시", "어떻", "어떤", "얼마", "알려", "있어", "없어", "하면",

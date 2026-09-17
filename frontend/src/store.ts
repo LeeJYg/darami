@@ -160,6 +160,19 @@ function procFromOp(op: BoardOp): Procedure | null {
   };
 }
 
+/**
+ * 모델은 보드 상태를 모른 채 "필요한 절차 N가지를 '할 일'에 담아뒀어요"라고 쓴다.
+ * 복합 이벤트처럼 보드가 미리 채워져 있으면 N이 화면과 어긋나므로(실측: "2가지" vs 보드 7장) 실제 개수로 맞춘다.
+ */
+const COUNT_CLAIM = /(필요한\s*)?절차\s*(\d+)\s*가지를\s*['‘"]?할\s*일['’"]?에\s*담아\s*(뒀|두었|놓았|놨)어요/;
+export function fixBoardCountClaim(messages: ChatMessage[], boardCount: number): ChatMessage[] {
+  const last = messages[messages.length - 1];
+  const m = last?.role === "assistant" ? COUNT_CLAIM.exec(last.content) : null;
+  if (!m || Number(m[2]) === boardCount) return messages;
+  const fixed = last.content.replace(COUNT_CLAIM, `필요한 절차 ${boardCount}가지를 '할 일'에 정리해뒀어요`);
+  return [...messages.slice(0, -1), { ...last, content: fixed }];
+}
+
 function applyBoardOps(board: BoardItem[], ops: BoardOp[]): BoardItem[] {
   const map = new Map(board.map((b) => [b.id, { ...b }]));
   for (const op of ops) {
@@ -495,7 +508,9 @@ export const useStore = create<State>((set, get) => ({
       onDone: () => {
         // 응답이 끝났는데 보드가 여전히 비어 있으면 '조용한 빈 화면' 대신 이유를 남긴다.
         set((s) => {
-          if (s.board.length > 0 || s.userTodos.length > 0) return { streaming: false, boardError: null };
+          if (s.board.length > 0 || s.userTodos.length > 0) {
+            return { streaming: false, boardError: null, messages: fixBoardCountClaim(s.messages, s.board.length) };
+          }
           const n = s.playbook?.procedures.length ?? 0;
           const waiting = (s.quickReplies?.length ?? 0) > 0;
           return {
