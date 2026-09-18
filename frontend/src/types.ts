@@ -12,6 +12,24 @@ export interface Source {
   checkedAt: string;
 }
 
+/** 이 절차를 놓쳤을 때 실제로 생기는 손해 (멘토 지적 M1 — "페인킬러"를 화면에 세운다).
+ *  amountVerified=false 면 금액을 숫자로 쓰지 않고, 화면에도 '미검증' 배지가 붙는다.
+ *  금액 환각을 막는 guard 와 같은 원칙: 검증된 값만 숫자로 보여 준다. */
+export interface ProcedureRisk {
+  /** 손해의 종류: 과태료 · 지원금 · 보증금 · 수급권 */
+  kind: string;
+  /** 카드에 한 줄로 뜨는 문구 */
+  label: string;
+  /** 상세 시트에 뜨는 설명 */
+  detail: string;
+  /** 근거 법령·기관 */
+  basis: string;
+  /** 근거 원문 링크 (있을 때만) */
+  url?: string;
+  /** 금액·효력이 저장소 안에서 출처로 확인된 값인지 */
+  amountVerified: boolean;
+}
+
 export interface Procedure {
   id: string;
   name: string;
@@ -33,6 +51,8 @@ export interface Procedure {
   fromEvents?: string[];
   /** 큐레이션 agent의 grounding 상태 (verified/partial=공식출처, ai=AI생성·미검증) */
   verification_status?: "verified" | "partial" | "needs_review" | "unverified";
+  /** 놓쳤을 때 생기는 손해. 없으면 표시하지 않는다. */
+  risk?: ProcedureRisk;
 }
 
 export interface Playbook {

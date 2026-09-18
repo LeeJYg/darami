@@ -30,6 +30,7 @@ from openai import OpenAI
 import demo
 from compose import COMPOSITES, merge_playbooks
 from guard import sanitize_reply
+import risks
 from verified_move import (
     answer as verified_move_answer,
     board_ops as verified_board_ops,
@@ -134,6 +135,11 @@ class PersonaReq(BaseModel):
 
 # ---------- 플레이북 ----------
 def load_playbook(event: str | None) -> dict:
+    """절차 목록 + '놓치면 생기는 손해'(risk). risk 는 risks.py 한 곳에서만 관리한다."""
+    return risks.attach_all(_load_playbook_raw(event))
+
+
+def _load_playbook_raw(event: str | None) -> dict:
     if not event:
         return {"event": None, "title": "", "procedures": []}
     # 복합 이벤트("출산 후 이사" 등)는 재료 이벤트를 각각 불러 한 보드로 합친다.
@@ -188,7 +194,7 @@ def get_composed_playbook(slug: str, region: Optional[str] = None):
             parts.append(curated if (curated and curated.get("procedures")) else load_playbook(ev))
         except Exception:  # noqa: BLE001
             parts.append(load_playbook(ev))
-    return JSONResponse(merge_playbooks(slug, parts))
+    return JSONResponse(risks.attach_all(merge_playbooks(slug, parts)))
 
 
 @app.get("/api/playbook/{event}")
@@ -294,7 +300,9 @@ def generate(req: GenReq):
     if provider.client is None:
         return JSONResponse({"error": f"{provider.label} API 키가 설정되지 않았습니다."}, status_code=500)
     try:
-        playbook = curate_dynamic(req.description.strip(), req.persona, make_json_caller(provider))
+        playbook = risks.attach_all(
+            curate_dynamic(req.description.strip(), req.persona, make_json_caller(provider))
+        )
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"error": f"동적 큐레이션 실패: {e}"}, status_code=500)
     return JSONResponse(playbook)

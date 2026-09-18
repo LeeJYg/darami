@@ -146,6 +146,18 @@ export default function TaskBoard() {
                       )}
                     </div>
                     <div className="text-[11px] text-acorn/55 mt-0.5 truncate">{p.deadline}</div>
+                    {/* 놓치면 생기는 손해 — 기한만으로는 "왜 급한지"가 안 보인다(멘토 지적 M1). */}
+                    {p.risk && b.status !== "done" && (
+                      <div
+                        data-testid="risk-chip"
+                        className="mt-1 flex items-center gap-1 rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5"
+                      >
+                        <span className="text-[10px] leading-none shrink-0">⚠️</span>
+                        <span className="text-[10px] font-semibold text-red-600 truncate">
+                          놓치면 {p.risk.label}
+                        </span>
+                      </div>
+                    )}
                   </button>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span

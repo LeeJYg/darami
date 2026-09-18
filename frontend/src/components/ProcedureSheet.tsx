@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { fetchLegalBasis } from "../api/chat";
-import type { LegalBasis, Procedure } from "../types";
+import type { LegalBasis, Procedure, ProcedureRisk } from "../types";
 
 /** 절차 상세 bottom sheet: 요약·기관·서류 체크리스트·바로가기·법적근거·출처 */
 export default function ProcedureSheet() {
@@ -64,6 +64,9 @@ export default function ProcedureSheet() {
               ✕
             </button>
           </div>
+
+          {/* 놓치면 생기는 손해 — 요약보다 위에 둔다. 기한을 지켜야 할 '이유'가 먼저다. */}
+          {p.risk && <RiskSection risk={p.risk} />}
 
           {/* 요약 (비어있으면 박스 자체를 숨김) */}
           {p.summary?.trim() && (
@@ -130,6 +133,43 @@ export default function ProcedureSheet() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** 놓쳤을 때 생기는 손해. 금액은 출처로 확인된 것만 숫자로 나오고,
+ *  미검증이면 숫자 대신 손해의 종류만 적고 그 사실을 화면에 밝힌다. */
+function RiskSection({ risk }: { risk: ProcedureRisk }) {
+  return (
+    <div data-testid="risk-section" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[13px] leading-none">⚠️</span>
+        <span className="text-[11px] font-bold text-red-500/80 tracking-wide">
+          기한을 놓치면 · {risk.kind}
+        </span>
+      </div>
+      <p className="text-[14px] font-extrabold text-red-600 mt-1.5 leading-snug">{risk.label}</p>
+      <p className="text-[12.5px] text-acorn/80 leading-relaxed mt-1.5">{risk.detail}</p>
+      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+        <span
+          className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${
+            risk.amountVerified ? "bg-leaf/15 text-leaf" : "bg-acorn/10 text-acorn/60"
+          }`}
+        >
+          {risk.amountVerified ? "🛡️ 근거 확인됨" : "ℹ️ 금액 미검증 — 숫자는 표시하지 않음"}
+        </span>
+        <span className="text-[11px] text-acorn/60">{risk.basis}</span>
+      </div>
+      {risk.url && (
+        <a
+          href={risk.url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-block text-[12px] font-semibold text-red-600 mt-1.5"
+        >
+          근거 원문 보기 →
+        </a>
+      )}
     </div>
   );
 }
