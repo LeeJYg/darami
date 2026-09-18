@@ -90,18 +90,47 @@ def ensure_deposit_card(question: str, ops: list, playbook: dict | None) -> list
 
 CAR_WORDS = ("차량", "자동차", "차 있")
 SCHOOL_WORDS = ("초등학교", "초등학생", "중학교", "재학", "전학")
+HOME_CARE_WORDS = ("가정양육", "집에서 양육", "어린이집 안", "어린이집 미이용", "유치원 안", "유치원 미이용")
+SEOUL_WORDS = ("서울", "서울시")
+INVOLUNTARY_EXIT_WORDS = ("권고사직", "해고", "비자발적", "계약만료", "계약 만료")
+ONE_YEAR_WORDS = ("1년 이상", "일 년 이상", "12개월 이상")
+TRAINING_WORDS = ("재취업 훈련", "직무전환", "직무 전환", "내일배움", "교육 받고", "훈련 받고")
+EARLY_REEMPLOYMENT_WORDS = ("조기재취업", "조기 재취업", "실업급여 수급 중 재취업", "구직급여 수급 중 재취업")
 # 근거 신호가 없으면 add 를 제거만 한다(놓치는 쪽 방지는 deposit-protection처럼 보증금 전액이 걸린
 # 절차만 우선한다 — 학교·차량은 사용자가 답하면 프론트가 그때 add 하므로 누락 방지가 급하지 않다).
-STRIP_ONLY_GUARDS = {"car-address": CAR_WORDS, "school-transfer": SCHOOL_WORDS}
+STRIP_ONLY_GUARDS = {
+    "car-address": CAR_WORDS,
+    "school-transfer": SCHOOL_WORDS,
+    "child-care-allowance": HOME_CARE_WORDS,
+    "seoul-maternity-transport": SEOUL_WORDS,
+    "unemployment-benefit": INVOLUNTARY_EXIT_WORDS,
+    "severance-pay": ONE_YEAR_WORDS,
+    "tomorrow-learning-card": TRAINING_WORDS,
+    "early-reemployment": EARLY_REEMPLOYMENT_WORDS,
+}
+
+
+def _has_guard_signal(question: str, procedure_id: str, words: tuple[str, ...]) -> bool:
+    if any(w in question for w in words):
+        return True
+    if procedure_id != "severance-pay":
+        return False
+    # "3년 근속"처럼 '이상'이 생략된 실제 근속기간도 1년 요건을 충족한다.
+    for amount, unit in re.findall(r"(\d+)\s*(년|개월)\s*(?:이상\s*)?(?:근속|재직|다닌)", question):
+        months = int(amount) * 12 if unit == "년" else int(amount)
+        if months >= 12:
+            return True
+    return False
 
 
 def strip_unjustified_conditionals(question: str, ops: list) -> list:
-    """조건이 확인되지 않은 conditional 절차(차량 보유·재학 자녀)를 LLM이 근거 없이 add하면
-    코드로 뺀다. 실측: "출산 후 이사"(차량·자녀 언급 0개) 첫 응답에 '자동차 주소지 변경'이
-    add된 사례가 나왔다(M5와 같은 클래스의 결함, deposit-protection 실측 뒤 재발견)."""
+    """사용자 입력에서 자격 조건이 확인되지 않은 conditional 절차를 LLM이 add하면 제거한다.
+
+    이미 보드에 있는 카드의 상태 변경은 건드리지 않으며, 자격 신호가 있는 add도 그대로 둔다.
+    """
     out = list(ops or [])
     for pid, words in STRIP_ONLY_GUARDS.items():
-        if any(w in question for w in words):
+        if _has_guard_signal(question, pid, words):
             continue
         out = [o for o in out if not (o.get("op") == "add" and o.get("id") == pid)]
     return out
