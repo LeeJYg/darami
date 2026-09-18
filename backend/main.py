@@ -36,6 +36,7 @@ from verified_move import (
     board_ops as verified_board_ops,
     enforce_same_day,
     ensure_deposit_card,
+    strip_unjustified_conditionals,
 )
 from prompts import build_system_prompt, build_generation_prompt, build_persona_prompt
 from sources.curate import curate_event, legal_for, curate_dynamic
@@ -265,6 +266,7 @@ def call_chat(
     clean, removed = sanitize_reply(str(result.get("reply", "")), grounded or "")
     latest = next((m.content for m in reversed(messages) if m.role == "user"), "")
     ops = ensure_deposit_card(latest, result.get("boardOps", []), playbook)
+    ops = strip_unjustified_conditionals(latest, ops)
     result["boardOps"] = ops
     result["reply"] = enforce_same_day(clean, ops)
     if removed:

@@ -69,14 +69,42 @@ LEASE_WORDS = ("전세", "월세", "임차", "보증금") + DEPOSIT_WORDS
 
 def ensure_deposit_card(question: str, ops: list, playbook: dict | None) -> list:
     """확정일자 카드는 LLM의 boardOps 선택에만 맡기지 않는다(놓치면 보증금 전액이 걸림).
-    질문에 임차 신호가 있고 플레이북에 절차가 있는데 LLM이 add하지 않았으면 코드로 추가한다."""
+
+    양방향으로 강제한다:
+    - 질문에 임차 신호(LEASE_WORDS)가 있고 플레이북에 절차가 있는데 LLM이 add하지 않았으면
+      코드로 추가한다(누락 방지).
+    - 임차 신호가 **없는데도** LLM이 add했으면 제거한다(과다 추가 방지). 복합 이벤트(예: "출산 후
+      이사")의 플레이북에는 deposit-protection이 후보로 함께 실리는데, LLM이 자유·매매 이사에도
+      "이사"라는 낱말만 보고 임의로 이 카드를 얹는 사례가 실측됐다(LEASE_WORDS 신호 0개).
+    """
     ids = {p.get("id") for p in (playbook or {}).get("procedures", [])}
-    if "deposit-protection" not in ids or not any(w in question for w in LEASE_WORDS):
-        return ops
+    has_deposit = "deposit-protection" in ids
+    leased = any(w in question for w in LEASE_WORDS)
     already = any(o.get("op") == "add" and o.get("id") == "deposit-protection" for o in ops or [])
-    if already:
-        return ops
-    return list(ops or []) + [{"op": "add", "id": "deposit-protection", "status": "waiting"}]
+    if has_deposit and leased and not already:
+        return list(ops or []) + [{"op": "add", "id": "deposit-protection", "status": "waiting"}]
+    if not leased and already:
+        return [o for o in ops if not (o.get("op") == "add" and o.get("id") == "deposit-protection")]
+    return ops
+
+
+CAR_WORDS = ("차량", "자동차", "차 있")
+SCHOOL_WORDS = ("초등학교", "초등학생", "중학교", "재학", "전학")
+# 근거 신호가 없으면 add 를 제거만 한다(놓치는 쪽 방지는 deposit-protection처럼 보증금 전액이 걸린
+# 절차만 우선한다 — 학교·차량은 사용자가 답하면 프론트가 그때 add 하므로 누락 방지가 급하지 않다).
+STRIP_ONLY_GUARDS = {"car-address": CAR_WORDS, "school-transfer": SCHOOL_WORDS}
+
+
+def strip_unjustified_conditionals(question: str, ops: list) -> list:
+    """조건이 확인되지 않은 conditional 절차(차량 보유·재학 자녀)를 LLM이 근거 없이 add하면
+    코드로 뺀다. 실측: "출산 후 이사"(차량·자녀 언급 0개) 첫 응답에 '자동차 주소지 변경'이
+    add된 사례가 나왔다(M5와 같은 클래스의 결함, deposit-protection 실측 뒤 재발견)."""
+    out = list(ops or [])
+    for pid, words in STRIP_ONLY_GUARDS.items():
+        if any(w in question for w in words):
+            continue
+        out = [o for o in out if not (o.get("op") == "add" and o.get("id") == pid)]
+    return out
 
 
 SOFT_WORDS = ("가까운 시일", "여유", "천천히", "나중에", "편하실 때")
