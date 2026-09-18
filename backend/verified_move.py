@@ -90,12 +90,39 @@ def ensure_deposit_card(question: str, ops: list, playbook: dict | None) -> list
 
 CAR_WORDS = ("차량", "자동차", "차 있")
 SCHOOL_WORDS = ("초등학교", "초등학생", "중학교", "재학", "전학")
-HOME_CARE_WORDS = ("가정양육", "집에서 양육", "어린이집 안", "어린이집 미이용", "유치원 안", "유치원 미이용")
+HOME_CARE_WORDS = (
+    "가정양육", "가정 양육", "가정에서 돌", "가정에서 키",
+    "집에서 양육", "집에서 키", "집에서 돌", "제가 돌", "제가 키", "직접 돌", "직접 키",
+    "어린이집 안", "어린이집 미이용", "유치원 안", "유치원 미이용",
+)
+# 시설 미이용을 "어린이집에 안 보내요"처럼 조사를 끼워 말하는 경우.
+HOME_CARE_RE = re.compile(r"(어린이집|유치원|보육시설|기관)\s*[에을를는도]?\s*(안|않|못|미)")
 SEOUL_WORDS = ("서울", "서울시")
-INVOLUNTARY_EXIT_WORDS = ("권고사직", "해고", "비자발적", "계약만료", "계약 만료")
+# 서울에만 있는 자치구만 넣는다 — 중구·서구·강서구는 타 광역시에도 있어 제외했다.
+SEOUL_DISTRICTS = (
+    "종로구", "용산구", "성동구", "광진구", "동대문구", "중랑구", "성북구", "강북구",
+    "도봉구", "노원구", "은평구", "서대문구", "마포구", "양천구", "구로구", "금천구",
+    "영등포구", "동작구", "관악구", "서초구", "강남구", "송파구", "강동구",
+)
+INVOLUNTARY_EXIT_WORDS = (
+    "권고사직", "해고", "비자발적", "계약만료", "계약 만료", "계약종료", "계약 종료",
+    "정리해고", "구조조정", "나가라", "잘렸", "잘림", "실직", "폐업", "회사 사정", "희망퇴직",
+)
 ONE_YEAR_WORDS = ("1년 이상", "일 년 이상", "12개월 이상")
-TRAINING_WORDS = ("재취업 훈련", "직무전환", "직무 전환", "내일배움", "교육 받고", "훈련 받고")
-EARLY_REEMPLOYMENT_WORDS = ("조기재취업", "조기 재취업", "실업급여 수급 중 재취업", "구직급여 수급 중 재취업")
+# "3년 다녔고"·"2년 일했는데"처럼 '근속' 없이 말하는 실제 표현까지 읽는다.
+TENURE_RE = re.compile(
+    r"(\d+)\s*(년|개월)\s*(?:이상\s*)?(?:간\s*|동안\s*|정도\s*)?"
+    r"(?:근속|재직|근무|다니|다녔|다님|일하|일했|몸담)"
+)
+TENURE_YEARS_RE = re.compile(r"(\d+)\s*년\s*차")
+TRAINING_WORDS = (
+    "재취업 훈련", "직무전환", "직무 전환", "내일배움", "교육 받", "교육받",
+    "훈련 받", "훈련받", "직업훈련", "직업 훈련", "국비지원", "국비 지원",
+    "훈련과정", "훈련 과정", "배우고 싶", "기술 배",
+)
+EARLY_REEMPLOYMENT_WORDS = ("조기재취업", "조기 재취업")
+# "실업급여 받다가 재취업했어요"처럼 두 낱말이 떨어져 나오는 경우.
+EARLY_REEMPLOYMENT_RE = re.compile(r"(실업급여|구직급여)[^.!?]{0,30}(재취업|취업했|취업하)")
 # 근거 신호가 없으면 add 를 제거만 한다(놓치는 쪽 방지는 deposit-protection처럼 보증금 전액이 걸린
 # 절차만 우선한다 — 학교·차량은 사용자가 답하면 프론트가 그때 add 하므로 누락 방지가 급하지 않다).
 STRIP_ONLY_GUARDS = {
@@ -111,15 +138,29 @@ STRIP_ONLY_GUARDS = {
 
 
 def _has_guard_signal(question: str, procedure_id: str, words: tuple[str, ...]) -> bool:
+    """사용자 문장에 그 절차의 자격 신호가 있는가.
+
+    낱말 목록만으로는 같은 뜻의 다른 표기를 놓친다(실측: "3년 다녔고 권고사직이에요"에서
+    퇴직금 카드가 통째로 사라졌다). 그래서 절차별로 정규식 신호를 함께 본다.
+    """
     if any(w in question for w in words):
         return True
-    if procedure_id != "severance-pay":
+    if procedure_id == "severance-pay":
+        # "3년 근속"·"3년 다녔고"처럼 '이상'이 생략된 실제 근속기간도 1년 요건을 충족한다.
+        for amount, unit in TENURE_RE.findall(question):
+            months = int(amount) * 12 if unit == "년" else int(amount)
+            if months >= 12:
+                return True
+        for amount in TENURE_YEARS_RE.findall(question):
+            if int(amount) >= 1:
+                return True
         return False
-    # "3년 근속"처럼 '이상'이 생략된 실제 근속기간도 1년 요건을 충족한다.
-    for amount, unit in re.findall(r"(\d+)\s*(년|개월)\s*(?:이상\s*)?(?:근속|재직|다닌)", question):
-        months = int(amount) * 12 if unit == "년" else int(amount)
-        if months >= 12:
-            return True
+    if procedure_id == "child-care-allowance":
+        return bool(HOME_CARE_RE.search(question))
+    if procedure_id == "seoul-maternity-transport":
+        return any(d in question for d in SEOUL_DISTRICTS)
+    if procedure_id == "early-reemployment":
+        return bool(EARLY_REEMPLOYMENT_RE.search(question))
     return False
 
 
